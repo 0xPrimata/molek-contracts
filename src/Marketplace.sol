@@ -28,10 +28,6 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
 
     // =====================================================================
 
-    
-
-    // =====================================================================
-
     function initialize(
         address payable _feeCollector,
         address _wrappedToken
@@ -76,11 +72,7 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
             price: price
         });
 
-        emit CreateAsk({
-            nft: address(nft),
-            tokenID: tokenID,
-            price: price
-        });
+        emit CreateAsk({nft: address(nft), tokenID: tokenID, price: price});
     }
 
     /// @notice Creates a bid on (`nft`, `tokenID`) tuple for `price`.
@@ -135,8 +127,8 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
     ) external {
         for (uint256 i = 0; i < nft.length; i++) {
             address nftAddress = address(nft[i]);
-            if (asks[nftAddress][tokenID[i]].seller != msg.sender) revert
-                NotAskCreator();
+            if (asks[nftAddress][tokenID[i]].seller != msg.sender)
+                revert NotAskCreator();
 
             delete asks[nftAddress][tokenID[i]];
 
@@ -178,22 +170,18 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
         Ask memory ask = asks[nftAddress][tokenID];
         if (!ask.exists) revert AskDoesNotExist();
 
-        if (nft.quantityOf(ask.seller, tokenID) == 0) revert AskCreatorNotOwner();
+        if (nft.quantityOf(ask.seller, tokenID) == 0)
+            revert AskCreatorNotOwner();
 
         uint256 fee = _calculateFee(nftAddress, tokenID, ask.price);
 
         emit AcceptAsk({nft: nftAddress, tokenID: tokenID, price: ask.price});
 
         delete asks[nftAddress][tokenID];
-        
+
         _transferWrappedIfNeeded(ask.price);
         IWrapper(wrappedToken).deposit{value: msg.value}();
-        _transferFundsAndFees(
-            address(this),
-            ask.seller,
-            ask.price - fee,
-            fee
-        );
+        _transferFundsAndFees(address(this), ask.seller, ask.price - fee, fee);
         bool success = nft.safeTransferFrom_(
             asks[nftAddress][tokenID].seller,
             msg.sender,
@@ -201,20 +189,6 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
             new bytes(0)
         );
         if (!success) revert NFTNotSent();
-    }
-
-    function _transferFundsAndFees(
-        address from,
-        address to,
-        uint256 toSeller,
-        uint256 toFeeCollector
-    ) internal {
-        IERC20(wrappedToken).transferFrom(from, to, toSeller);
-        IERC20(wrappedToken).transferFrom(
-            from,
-            feeCollector,
-            toFeeCollector
-        );
     }
 
     /// @notice You are the owner of the NFTs, someone submitted the bids on them.
@@ -261,18 +235,32 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
     // ============ OWNER ==================================================
 
     /// @dev Used to change the address of the trade fee receiver.
-    function changeFeeCollector(address payable _newFeeCollector) external onlyOwner {
+    function changeFeeCollector(
+        address payable _newFeeCollector
+    ) external onlyOwner {
         if (_newFeeCollector == payable(address(0))) revert ZeroAddress();
         feeCollector = _newFeeCollector;
     }
 
     /// @dev Used to change the address of the trade fee receiver.
-    function changeTransferManager(address _newTransferManager) external onlyOwner {
+    function changeTransferManager(
+        address _newTransferManager
+    ) external onlyOwner {
         if (_newTransferManager == address(0)) revert ZeroAddress();
         transferManager = _newTransferManager;
     }
 
     // ============ PROCESS =============================================
+
+    function _transferFundsAndFees(
+        address from,
+        address to,
+        uint256 toSeller,
+        uint256 toFeeCollector
+    ) internal {
+        IERC20(wrappedToken).transferFrom(from, to, toSeller);
+        IERC20(wrappedToken).transferFrom(from, feeCollector, toFeeCollector);
+    }
 
     function _calculateFee(
         address _collection,
