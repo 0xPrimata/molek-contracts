@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.11;
 
-import "./interfaces/INFTContract.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 // helps with sending the NFTs, will be particularly useful for batch operations
 library NFTCommon {
@@ -18,7 +18,7 @@ library NFTCommon {
      @param data    Additional data with no specified format, MUST be sent unaltered in call to `onERC1155Received` on `_to`
     */
     function safeTransferFrom_(
-        INFTContract nft,
+        IERC721 nft,
         address from,
         address to,
         uint256 tokenID,
@@ -29,7 +29,7 @@ library NFTCommon {
             return true;
             // on fail, use 1155s format
         } catch (bytes memory) {
-            try nft.safeTransferFrom(from, to, tokenID, 1, data) {
+            try nft.safeTransferFrom(from, to, tokenID, data) {
                 return true;
             } catch (bytes memory) {
                 return false;
@@ -45,7 +45,7 @@ library NFTCommon {
      @return quantity of held token, possibly zero
     */
     function quantityOf(
-        INFTContract nft,
+        IERC721 nft,
         address potentialOwner,
         uint256 tokenID
     ) internal view returns (uint256) {
@@ -56,7 +56,7 @@ library NFTCommon {
                 return 0;
             }
         } catch (bytes memory) {
-            try nft.balanceOf(potentialOwner, tokenID) returns (
+            try nft.balanceOf(potentialOwner) returns (
                 uint256 amount
             ) {
                 return amount;

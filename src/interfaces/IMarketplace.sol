@@ -1,10 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.11;
 
-import "./INFTContract.sol";
-
 interface IMarketplace {
-
     event CreateAsk(
         address indexed nft,
         uint256 indexed tokenID,
@@ -29,10 +26,13 @@ interface IMarketplace {
         uint256 price
     );
 
+    event Blacklisted(address indexed nft, bool isBlacklisted);
+
     error NotOwnerOfTokenId();
     error PriceTooLow();
     error BidTooLow();
     error NotBidCreator();
+    error NotBlacklisted();
     error NotAskCreator();
     error AskDoesNotExist();
     error AskIsReserved();

@@ -3,10 +3,10 @@ pragma solidity >=0.8.11;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import "./interfaces/IMarketplace.sol";
 import "./interfaces/ITransferManager.sol";
-import "./interfaces/INFTContract.sol";
 import "./interfaces/IWrapper.sol";
 import "./interfaces/IERC165.sol";
 import "./interfaces/IERC2981.sol";
@@ -15,18 +15,20 @@ import "./NFTCommon.sol";
 
 contract Marketplace is IMarketplace, OwnableUpgradeable {
     using Address for address;
-    using NFTCommon for INFTContract;
+    using NFTCommon for IERC721;
 
     mapping(address => mapping(uint256 => Ask)) public asks;
     mapping(address => mapping(uint256 => Bid)) public bids;
 
-    // =====================================================================
-
     address public feeCollector;
     address public wrappedToken;
     address private transferManager;
+    mapping(address nftContract => bool) public blacklisted;
 
-    // =====================================================================
+    modifier onlyBlacklisted(IERC721 nftContract) {
+        if (!blacklisted[address(nftContract)]) revert NotBlacklisted();
+        _;
+    }
 
     function initialize(
         address payable _feeCollector,
@@ -37,8 +39,6 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
         __Ownable_init();
     }
 
-    // ======= CREATE ASK / BID ============================================
-
     /// @notice Creates an ask for (`nft`, `tokenID`) tuple for `price`, which can
     /// be reserved for `to`, if `to` is not a zero address.
     /// @dev Creating an ask requires msg.sender to have at least one qty of
@@ -47,7 +47,7 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
     /// @param tokenID Token Ids of the NFTs msg.sender wishes to sell.
     /// @param price   Prices at which the seller is willing to sell the NFTs.
     function createAsk(
-        INFTContract[] calldata nft,
+        IERC721[] calldata nft,
         uint256[] calldata tokenID,
         uint256[] calldata price
     ) external {
@@ -57,10 +57,10 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
     }
 
     function _createSingleAsk(
-        INFTContract nft,
+        IERC721 nft,
         uint256 tokenID,
         uint256 price
-    ) internal {
+    ) internal onlyBlacklisted(nft) {
         if (nft.quantityOf(msg.sender, tokenID) == 0)
             revert NotOwnerOfTokenId();
         if (price <= 10_000) revert PriceTooLow();
@@ -80,7 +80,7 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
     /// @param tokenID Token Ids of the NFTs msg.sender wishes to buy.
     /// @param price   Prices at which the buyer is willing to buy the NFTs.
     // function createBid(
-    //     INFTContract nft,
+    //     IERC721 nft,
     //     uint256 tokenID,
     //     uint256 price
     // ) external override {
@@ -122,7 +122,7 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
     /// @param tokenID Token Ids of the NFTs msg.sender wishes to cancel the
     /// asks on.
     function cancelAsks(
-        INFTContract[] calldata nft,
+        IERC721[] calldata nft,
         uint256[] calldata tokenID
     ) external {
         for (uint256 i = 0; i < nft.length; i++) {
@@ -141,7 +141,7 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
     /// @param tokenID Token Ids of the NFTs msg.sender wishes to cancel the
     /// bids on.
     // function cancelBid(
-    //     INFTContract[] calldata nft,
+    //     IERC721[] calldata nft,
     //     uint256[] calldata tokenID
     // ) external override {
     //     for (uint256 i = 0; i < nft.length; i++) {
@@ -165,7 +165,7 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
     /// @param nft     An array of ERC-721 and / or ERC-1155 addresses.
     /// @param tokenID Token Ids of the NFTs msg.sender wishes to accept the
     /// asks on.
-    function acceptAsk(INFTContract nft, uint256 tokenID) external payable {
+    function acceptAsk(IERC721 nft, uint256 tokenID) external payable {
         address nftAddress = address(nft);
         Ask memory ask = asks[nftAddress][tokenID];
         if (!ask.exists) revert AskDoesNotExist();
@@ -182,13 +182,11 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
         _transferWrappedIfNeeded(ask.price);
         IWrapper(wrappedToken).deposit{value: msg.value}();
         _transferFundsAndFees(address(this), ask.seller, ask.price - fee, fee);
-        bool success = nft.safeTransferFrom_(
+            nft.safeTransferFrom(
             asks[nftAddress][tokenID].seller,
             msg.sender,
-            tokenID,
-            new bytes(0)
+            tokenID
         );
-        if (!success) revert NFTNotSent();
     }
 
     /// @notice You are the owner of the NFTs, someone submitted the bids on them.
@@ -197,7 +195,7 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
     /// @param tokenID Token Ids of the NFTs msg.sender wishes to accept the
     /// bids on.
     // function acceptBid(
-    //     INFTContract[] calldata nft,
+    //     IERC721[] calldata nft,
     //     uint256[] calldata tokenID
     // ) external override {
     //     uint256 escrowDelta = 0;
@@ -249,6 +247,15 @@ contract Marketplace is IMarketplace, OwnableUpgradeable {
         if (_newTransferManager == address(0)) revert ZeroAddress();
         transferManager = _newTransferManager;
     }
+    
+    /// @dev Used to blacklist a contract
+    function blacklist(address _collection, bool _condition) external onlyOwner {
+        if (_collection == address(0)) revert ZeroAddress();
+        blacklisted[_collection] = _condition;
+
+        emit Blacklisted(_collection, _condition);
+    }
+
 
     // ============ PROCESS =============================================
 
