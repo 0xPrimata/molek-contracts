@@ -4,16 +4,17 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 
-import  "./interfaces/ITransferManager.sol";
+import "./interfaces/ITransferManager.sol";
 
 contract TransferManager is ITransferManager, Initializable {
     address public molekMarket;
 
     error NotMarket();
 
-    constructor (address _molekMarket) {
+    constructor(address _molekMarket) {
         molekMarket = _molekMarket;
     }
+
     function transferNonFungibleToken(
         address collection,
         address from,

@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
 import "../src/Marketplace.sol";
 import "../src/utils/WrappedToken.sol";
 import {TransferManager} from "../src/TransferManager.sol";
@@ -24,7 +23,6 @@ contract MockERC721 is ERC721 {
     }
 }
 
-
 contract MarketTest is Test, IMarketplace {
     TransparentUpgradeableProxy public market;
     Marketplace public marketplaceImplementation;
@@ -35,7 +33,9 @@ contract MarketTest is Test, IMarketplace {
     MockERC721 public blacklisted;
     MockERC721 public notBlacklisted;
 
+    uint256 public minPrice = 10001;
     address public feeCollector;
+    address public malicious = address(0x1337);
 
     function setUp() public {
         marketplaceImplementation = new Marketplace();
@@ -91,25 +91,135 @@ contract MarketTest is Test, IMarketplace {
         marketplace.changeTransferManager(address(0x1337));
     }
 
-    function testBlacklisted() internal {
-        vm.expectRevert(NotBlacklisted.selector);
-        marketplace.createAsk([IERC721(blacklisted)], [uint256(1)], [uint256(1)]);
-        vm.expectRevert(NotBlacklisted.selector);
-        marketplace.createAsk([IERC721(blacklisted)], [uint256(1)], [uint256(1)]);
-
-        vm.expectEmit(true, false, false, false);
-        emit IMarketplace.Blacklisted(address(blacklisted), true);
-        marketplace.blacklist(IERC721(blacklisted), true);
-
-        vm.expectEmit(false, true, false, false);
-        emit IMarketplace.AskCreated(address(marketplace), 1, 1);
-        marketplace.createAsk([IERC721(blacklisted)], [uint256(1)], [uint256(1)]);
-
-        vm.expectRevert(NotBlacklisted.selector);
-        marketplace.createAsk([IERC721(blacklisted)], [uint256(1)], [uint256(1)]);
+    function createAsk(address token, uint8 tokenId, uint256 price) public {
+        IERC721[] memory tokens = new IERC721[](1);
+        tokens[0] = IERC721(token);
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+        uint256[] memory prices = new uint256[](1);
+        prices[0] = price;
+        marketplace.createAsk(tokens, tokenIds, prices);
     }
 
-    function createAsk() internal {}
+    function cancelAsk(address token, uint8 tokenId) public {
+        IERC721[] memory tokens = new IERC721[](1);
+        tokens[0] = IERC721(token);
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+        marketplace.cancelAsks(tokens, tokenIds);
+    }
 
-    function testCreateAsk() public {}
+    function testBlacklisted() public {
+        vm.expectRevert(NotBlacklisted.selector);
+        createAsk(address(notBlacklisted), 1, minPrice);
+
+        vm.expectRevert(NotBlacklisted.selector);
+        createAsk(address(blacklisted), 1, minPrice);
+
+        vm.expectEmit(true, true, false, false);
+        emit IMarketplace.Blacklisted(address(blacklisted), true);
+        marketplace.blacklist(address(blacklisted), true);
+
+        vm.expectRevert(PriceTooLow.selector);
+        createAsk(address(blacklisted), 1, 1);
+
+        vm.expectEmit(true, true, true, false);
+        emit IMarketplace.CreateAsk(
+            address(blacklisted),
+            address(this),
+            1,
+            minPrice
+        );
+        createAsk(address(blacklisted), 1, minPrice);
+
+        vm.expectRevert(NotBlacklisted.selector);
+        createAsk(address(notBlacklisted), 1, minPrice);
+    }
+
+    function testCreateAsk() public {
+        testBlacklisted();
+        vm.expectRevert(NotBlacklisted.selector);
+        createAsk(address(0x0), 1, minPrice);
+
+        (bool exists, address seller, uint256 price) = marketplace.asks(
+            address(blacklisted),
+            1
+        );
+        assertTrue(exists);
+        assertTrue(seller == address(this));
+        assertTrue(price == minPrice);
+
+        vm.expectEmit(true, true, true, false);
+        emit IMarketplace.CreateAsk(
+            address(blacklisted),
+            address(this),
+            1,
+            minPrice * 2
+        );
+        createAsk(address(blacklisted), 1, minPrice * 2);
+        (bool exists1, address seller1, uint256 price1) = marketplace.asks(
+            address(blacklisted),
+            1
+        );
+        assertTrue(exists1);
+        assertTrue(seller1 == address(this));
+        assertTrue(price1 == minPrice * 2);
+
+        vm.expectRevert(NotOwnerOfTokenId.selector);
+        vm.prank(malicious);
+        createAsk(address(blacklisted), 1, minPrice);
+
+        // outer boundary
+        vm.expectRevert("ERC721: invalid token ID");
+        createAsk(address(blacklisted), 4, minPrice);
+    }
+
+    function testCancelAsk() public {
+        testCreateAsk();
+        vm.expectEmit(true, true, false, false);
+        emit IMarketplace.CancelAsk(address(blacklisted), 1);
+        cancelAsk(address(blacklisted), 1);
+        (bool exists, address seller, uint256 price) = marketplace.asks(
+            address(blacklisted),
+            1
+        );
+        assertTrue(!exists);
+        assertTrue(seller == address(0x0));
+        assertTrue(price == 0);
+
+        createAsk(address(blacklisted), 1, minPrice);
+
+        vm.prank(malicious);
+        vm.expectRevert(NotAskCreator.selector);
+        cancelAsk(address(blacklisted), 1);
+
+        // outer boundary
+        vm.expectRevert(NotAskCreator.selector);
+        cancelAsk(address(blacklisted), 4);
+
+        vm.expectRevert(NotAskCreator.selector);
+        cancelAsk(address(blacklisted), 2);
+    }
+
+    function testAcceptAsk() public {
+        testCreateAsk();
+
+        wrappedToken.balanceOf(address(this));
+
+        vm.expectRevert(AskDoesNotExist.selector);
+        marketplace.acceptAsk(blacklisted, 0, minPrice * 2);
+
+        vm.expectRevert("ERC721: caller is not token owner or approved");
+        marketplace.acceptAsk{value: minPrice * 2}(blacklisted, 1, 0);
+
+        blacklisted.approve(address(marketplace), 1);
+
+        vm.expectRevert(InsufficientValue.selector);
+        marketplace.acceptAsk{value: 1}(blacklisted, 1, 0);
+
+        wrappedToken.deposit{value: minPrice * 2}();
+        vm.expectEmit(true, true, true, false);
+        emit IMarketplace.AcceptAsk(address(blacklisted), 1, minPrice * 2);
+        marketplace.acceptAsk{value: minPrice * 2}(blacklisted, 1, 0);
+    }
 }

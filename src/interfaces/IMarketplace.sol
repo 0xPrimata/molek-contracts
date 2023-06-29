@@ -4,25 +4,27 @@ pragma solidity >=0.8.11;
 interface IMarketplace {
     event CreateAsk(
         address indexed nft,
-        uint256 indexed tokenID,
+        address indexed creator,
+        uint256 indexed tokenId,
         uint256 price
     );
-    event CancelAsk(address indexed nft, uint256 indexed tokenID);
+    event CancelAsk(address indexed nft, uint256 indexed tokenId);
     event AcceptAsk(
         address indexed nft,
-        uint256 indexed tokenID,
+        uint256 indexed tokenId,
         uint256 price
     );
 
     event CreateBid(
         address indexed nft,
-        uint256 indexed tokenID,
+        address indexed creator,
+        uint256 indexed tokenId,
         uint256 price
     );
-    event CancelBid(address indexed nft, uint256 indexed tokenID);
+    event CancelBid(address indexed nft, uint256 indexed tokenId);
     event AcceptBid(
         address indexed nft,
-        uint256 indexed tokenID,
+        uint256 indexed tokenId,
         uint256 price
     );
 

@@ -7,15 +7,19 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 library NFTCommon {
     /**
      @notice Transfers the NFT tokenID from to.
-     @dev safuTransferFrom name to avoid collision with the interface signature definitions. The reason it is implemented the way it is,
-      is because some NFT contracts implement both the 721 and 1155 standard at the same time. Sometimes, 721 or 1155 function does not work.
-      So instead of relying on the user's input, or asking the contract what interface it implements, it is best to just make a good assumption
-      about what NFT type it is (here we guess it is 721 first), and if that fails, we use the 1155 function to tranfer the NFT.
+     @dev safuTransferFrom name to avoid collision with the interface signature definitions. 
+     The reason it is implemented the way it is, is because some NFT contracts implement both 
+     the 721 and 1155 standard at the same time. Sometimes, 721 or 1155 function does not work.
+     So instead of relying on the user's input, or asking the contract what interface it implements,
+     it is best to just make a good assumption about what NFT type it is (here we guess it is 721 first),
+     and if that fails, we use the 1155 function to tranfer the NFT.
+
      @param nft     NFT address
      @param from    Source address
      @param to      Target address
      @param tokenID ID of the token type
-     @param data    Additional data with no specified format, MUST be sent unaltered in call to `onERC1155Received` on `_to`
+     @param data    Additional data with no specified format, MUST be sent unaltered in
+                    call to `onERC1155Received` on `_to`
     */
     function safeTransferFrom_(
         IERC721 nft,
@@ -56,9 +60,7 @@ library NFTCommon {
                 return 0;
             }
         } catch (bytes memory) {
-            try nft.balanceOf(potentialOwner) returns (
-                uint256 amount
-            ) {
+            try nft.balanceOf(potentialOwner) returns (uint256 amount) {
                 return amount;
             } catch (bytes memory) {
                 return 0;
