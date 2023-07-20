@@ -21,8 +21,8 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
     mapping(address => mapping(uint256 => Bid)) public bids;
 
     address public feeCollector;
-    address public wrappedToken;
     address private transferManager;
+    IERC20 public wrappedToken;
     mapping(address => bool) public blacklisted;
 
     modifier onlyBlacklisted(IERC721 collection) {
@@ -35,7 +35,7 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
         address _wrappedToken
     ) public initializer {
         feeCollector = _feeCollector;
-        wrappedToken = _wrappedToken;
+        wrappedToken = IERC20(_wrappedToken);
         __Ownable_init();
     }
 
@@ -170,8 +170,8 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
         uint256 _toSeller,
         uint256 _toFeeCollector
     ) internal {
-        IERC20(wrappedToken).transferFrom(_from, _to, _toSeller);
-        IERC20(wrappedToken).transferFrom(_from, feeCollector, _toFeeCollector);
+        wrappedToken.transferFrom(_from, _to, _toSeller);
+        wrappedToken.transferFrom(_from, feeCollector, _toFeeCollector);
     }
 
     function _calculateFee(
@@ -206,21 +206,13 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
     ) internal {
         uint256 excess = _msgValue + _wrapper - _cost;
         if (_msgValue > 0) {
-            IWrapper(wrappedToken).deposit{value: msg.value}();
+            IWrapper(address(wrappedToken)).deposit{value: msg.value}();
         }
         if (_wrapper > 0) {
-            IERC20(wrappedToken).transferFrom(
-                msg.sender,
-                address(this),
-                _wrapper
-            );
+            wrappedToken.transferFrom(msg.sender, address(this), _wrapper);
         }
         if (excess > 0) {
-            IERC20(wrappedToken).transferFrom(
-                address(this),
-                msg.sender,
-                excess
-            );
+            wrappedToken.transferFrom(address(this), msg.sender, excess);
         }
     }
 }
