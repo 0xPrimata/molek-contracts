@@ -12,8 +12,6 @@ import "./interfaces/IERC165.sol";
 import "./interfaces/IERC2981.sol";
 import "./interfaces/IERC20.sol";
 
-import "forge-std/console.sol";
-
 contract MolekMarket is IMarketplace, OwnableUpgradeable {
     using Address for address;
 
@@ -25,8 +23,8 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
     IERC20 public wrappedToken;
     mapping(address => bool) public blacklisted;
 
-    modifier onlyBlacklisted(IERC721 collection) {
-        if (!blacklisted[address(collection)]) revert NotBlacklisted();
+    modifier onlyBlacklisted(IERC721 _collection) {
+        if (!blacklisted[address(_collection)]) revert NotBlacklisted();
         _;
     }
 
