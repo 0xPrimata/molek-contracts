@@ -1,16 +1,20 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.19;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {OFTV2} from "@LayerZero/contracts/token/oft/v2/OFTV2.sol";
-import {IMolekMarket} from "./interfaces/IMolekMarket.sol";
+
+interface IMolekMarket {
+    function blacklisted(address _collection) external view returns (bool);
+}
 
 contract Favor is Ownable, OFTV2 {
     IMolekMarket public molekMarket;
 
-    error AddressIsBlacklisted();
-    error TxLimitExceeded();
+    error DifferentLength();
+    error CollectionNotBlacklisted();
+    error NotOwnerOfTokenId();
 
     /**
      * @notice Constructor
@@ -29,20 +33,20 @@ contract Favor is Ownable, OFTV2 {
 
     function mint(
         address _to,
-        address[] _collections,
-        uint256[] _tokenIds
+        address[] calldata _collections,
+        uint256[] calldata _tokenIds
     ) external {
         if (_collections.length != _tokenIds.length) revert DifferentLength();
         for (uint256 i = 0; i < _collections.length; i++) {
             IERC721 collection = IERC721(_collections[i]);
-            if (!molekMarket.blacklisted[_collections[i]])
+            if (!molekMarket.blacklisted(_collections[i]))
                 revert CollectionNotBlacklisted();
             if (collection.ownerOf(_tokenIds[i]) != msg.sender)
                 revert NotOwnerOfTokenId();
 
             collection.safeTransferFrom(
                 msg.sender,
-                address(dead),
+                address(0xdead),
                 _tokenIds[i]
             );
         }
