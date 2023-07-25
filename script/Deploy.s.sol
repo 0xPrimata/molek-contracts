@@ -8,7 +8,6 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "forge-std/Test.sol";
 import "../src/MolekMarket.sol";
 import "../src/utils/WrappedToken.sol";
-import {TransferManager} from "../src/TransferManager.sol";
 import "../src/interfaces/IMarketplace.sol";
 import "forge-std/Script.sol";
 
@@ -16,7 +15,6 @@ contract MarketScript is Script {
     TransparentUpgradeableProxy public market;
     MolekMarket public marketplaceImplementation;
     ProxyAdmin public proxyAdmin;
-    TransferManager public transferManager;
     address public wavaxFuji = 0x1D308089a2D1Ced3f1Ce36B1FcaF815b07217be3;
     address public wavax = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
     MolekMarket public marketplace;
@@ -41,7 +39,6 @@ contract MarketScript is Script {
             )
         );
 
-        transferManager = new TransferManager(address(market));
         marketplace = MolekMarket(address(market));
 
         marketplace.toggleBlacklist(0xdd811213C7d94D5243815884Ed273c934E7DB009);

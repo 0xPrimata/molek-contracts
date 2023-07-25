@@ -33,7 +33,6 @@ import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import "./interfaces/IMarketplace.sol";
-import "./interfaces/ITransferManager.sol";
 import "./interfaces/IWrapper.sol";
 import "./interfaces/IERC165.sol";
 import "./interfaces/IERC2981.sol";
@@ -47,7 +46,6 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
 
     bool private paused;
     address public feeCollector;
-    ITransferManager private transferManager;
     IERC20 public wrappedToken;
     mapping(address => bool) public blacklisted;
 
@@ -200,21 +198,12 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
     // ============ OWNER ==================================================
 
     /// @dev Used to change the address of the trade fee receiver.
-    function changeFeeCollector(
+    function setFeeCollector(
         address payable _newFeeCollector
     ) external onlyOwner {
         if (_newFeeCollector == address(0)) revert ZeroAddress();
         feeCollector = _newFeeCollector;
         emit SetFeeCollector(_newFeeCollector);
-    }
-
-    /// @dev Used to change the address of the trade fee receiver.
-    function changeTransferManager(
-        address _newTransferManager
-    ) external onlyOwner {
-        if (_newTransferManager == address(0)) revert ZeroAddress();
-        transferManager = ITransferManager(_newTransferManager);
-        emit SetTransferManager(_newTransferManager);
     }
 
     /// @dev Used to blacklist a contract
@@ -251,20 +240,6 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
         if (IERC165(_collection).supportsInterface(0x2a55205a)) {
             (, fee) = IERC2981(_collection).royaltyInfo(_tokenId, _amount);
         }
-    }
-
-    function _transferNonFungibleToken(
-        address _collectionAddress,
-        address _from,
-        address _to,
-        uint256 _tokenId
-    ) internal {
-        ITransferManager(transferManager).transferNonFungibleToken(
-            _collectionAddress,
-            _from,
-            _to,
-            _tokenId
-        );
     }
 
     function _chargeAndRefund(

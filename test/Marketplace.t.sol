@@ -8,7 +8,6 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "forge-std/Test.sol";
 import "../src/MolekMarket.sol";
 import "../src/utils/WrappedToken.sol";
-import {TransferManager} from "../src/TransferManager.sol";
 import "../src/interfaces/IMarketplace.sol";
 
 contract MockERC721 is ERC721 {
@@ -28,7 +27,7 @@ contract MarketTest is Test, IMarketplace, IERC721Receiver {
     TransparentUpgradeableProxy public market;
     MolekMarket public marketplaceImplementation;
     ProxyAdmin public proxyAdmin;
-    TransferManager public transferManager;
+    // TransferManager public transferManager;
     WrappedToken public wrappedToken;
     MolekMarket public marketplace;
     MockERC721 public blacklisted;
@@ -69,8 +68,9 @@ contract MarketTest is Test, IMarketplace, IERC721Receiver {
                 address(wrappedToken)
             )
         );
-        transferManager = new TransferManager(address(market));
+        // transferManager = new TransferManager(address(market));
         marketplace = MolekMarket(address(market));
+        // marketplace.setTransferManager(address(transferManager));
     }
 
     function testDeploy() public {
@@ -82,24 +82,24 @@ contract MarketTest is Test, IMarketplace, IERC721Receiver {
     }
 
     function testFeeCollector() public {
-        marketplace.changeFeeCollector(payable(address(0x2)));
+        marketplace.setFeeCollector(payable(address(0x2)));
         assertTrue(marketplace.feeCollector() == address(0x2));
         assertTrue(marketplace.owner() == address(this));
         assertTrue(marketplace.feeCollector() != address(0x1));
     }
 
-    function testTransferManager() public {
-        marketplace.changeTransferManager(address(transferManager));
+    // function testTransferManager() public {
+    //     marketplace.setTransferManager(address(transferManager));
 
-        vm.prank(address(0x1337));
-        vm.expectRevert("Ownable: caller is not the owner");
-        marketplace.changeTransferManager(address(0x1337));
+    //     vm.prank(address(0x1337));
+    //     vm.expectRevert("Ownable: caller is not the owner");
+    //     marketplace.setTransferManager(address(0x1337));
 
-        vm.expectRevert(ZeroAddress.selector);
-        marketplace.changeTransferManager(address(0x0));
+    //     vm.expectRevert(ZeroAddress.selector);
+    //     marketplace.setTransferManager(address(0x0));
 
-        marketplace.changeTransferManager(address(0x1337));
-    }
+    //     marketplace.setTransferManager(address(0x1337));
+    // }
 
     function createAsk(address token, uint256 tokenId, uint256 price) public {
         IERC721[] memory tokens = new IERC721[](1);
@@ -261,8 +261,6 @@ contract MarketTest is Test, IMarketplace, IERC721Receiver {
         uint256 balance = wrappedToken.balanceOf(seller);
         uint256 initialAvaxBalance = seller.balance;
         uint256 avaxBalance = address(malicious).balance;
-        console.log(balance);
-        console.log(avaxBalance);
         vm.deal(malicious, minPrice * 2);
         vm.startPrank(malicious);
         wrappedToken.deposit{value: minPrice}();
