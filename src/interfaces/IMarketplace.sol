@@ -29,6 +29,9 @@ interface IMarketplace {
     );
 
     event Blacklisted(address indexed collection, bool isBlacklisted);
+    event SetFeeCollector(address indexed feeCollector);
+    event SetTransferManager(address indexed transferManager);
+    event PauseToggled(bool paused);
 
     error NotOwnerOfTokenId();
     error PriceTooLow();
@@ -43,6 +46,7 @@ interface IMarketplace {
     error NFTNotSent();
     error InsufficientFunds();
     error ZeroAddress();
+    error Paused();
 
     struct Ask {
         address creator;

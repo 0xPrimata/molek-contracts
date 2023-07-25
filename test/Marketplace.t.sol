@@ -128,7 +128,7 @@ contract MarketTest is Test, IMarketplace, IERC721Receiver {
 
         vm.expectEmit(true, true, false, false);
         emit IMarketplace.Blacklisted(address(blacklisted), true);
-        marketplace.blacklist(address(blacklisted), true);
+        marketplace.toggleBlacklist(address(blacklisted));
 
         vm.expectRevert(PriceTooLow.selector);
         createAsk(address(blacklisted), 1, 1);
@@ -339,6 +339,45 @@ contract MarketTest is Test, IMarketplace, IERC721Receiver {
 
         assertEq(wrappedToken.balanceOf(seller), price);
         assertEq(wrappedToken.balanceOf(buyer), excess + excessWavax);
+
+        assertEq(seller2, address(0x0));
+        assertEq(storedPrice2, 0);
+    }
+
+    function testCreateAcceptAskAVAXFuzz(
+        address buyer,
+        uint256 tokenId,
+        uint256 price,
+        uint256 excess
+    ) public {
+        testBlacklisted();
+        price = bound(price, minPrice, type(uint128).max);
+        excess = bound(excess, 0, type(uint64).max);
+        tokenId = bound(tokenId, 0, 2);
+
+        vm.assume(buyer != address(0));
+
+        blacklisted.approve(address(marketplace), tokenId);
+        createAsk(address(blacklisted), tokenId, price);
+        (address seller, uint256 storedPrice) = marketplace.asks(
+            address(blacklisted),
+            tokenId
+        );
+        assertEq(seller, address(this));
+        assertEq(storedPrice, price);
+
+        vm.deal(buyer, price + excess);
+        vm.startPrank(buyer);
+        marketplace.acceptAskAVAX{value: price + excess}(blacklisted, tokenId);
+        (address seller2, uint256 storedPrice2) = marketplace.asks(
+            address(blacklisted),
+            tokenId
+        );
+
+        vm.stopPrank();
+
+        assertEq(wrappedToken.balanceOf(seller), price);
+        assertEq(wrappedToken.balanceOf(buyer), excess);
 
         assertEq(seller2, address(0x0));
         assertEq(storedPrice2, 0);

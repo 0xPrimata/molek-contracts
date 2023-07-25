@@ -44,9 +44,10 @@ contract MarketScript is Script {
         transferManager = new TransferManager(address(market));
         marketplace = MolekMarket(address(market));
 
-        marketplace.blacklist(0xdd811213C7d94D5243815884Ed273c934E7DB009, true);
-        marketplace.blacklist(0xb6168bd82410FdcBA31cFBECadB705B63f5376D1, true);
-        marketplace.blacklist(0x048c939bEa33c5dF4d2C69414B9385d55b3bA62E, true);
+        marketplace.toggleBlacklist(0xdd811213C7d94D5243815884Ed273c934E7DB009);
+        marketplace.toggleBlacklist(0xb6168bd82410FdcBA31cFBECadB705B63f5376D1);
+        marketplace.toggleBlacklist(0x048c939bEa33c5dF4d2C69414B9385d55b3bA62E);
+        marketplace.toggleBlacklist(0xfcf7613d90B64e1ca2bEaC37a20EE0219eAA6DDb);
 
         vm.stopBroadcast();
     }

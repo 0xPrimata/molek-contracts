@@ -1,4 +1,5 @@
 [profile.default]
+gas_reports = ["MolekMarket"]
 libs = ["lib"]
 out = "out"
 remappings = [
@@ -9,5 +10,4 @@ remappings = [
 ]
 solc_version = "0.8.19"
 src = "src"
-
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

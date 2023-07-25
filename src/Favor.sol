@@ -18,9 +18,9 @@ contract Favor is Ownable, OFTV2 {
 
     /**
      * @notice Constructor
-     * @param _molekMarket Address of the MolekMarket contract
-     * @param _lzEndpoint Address of the LayerZero endpoint
-     * @param _totalSupply Total supply of the token
+     * @param _molekMarket  Address of the MolekMarket contract
+     * @param _lzEndpoint   Address of the LayerZero endpoint
+     * @param _totalSupply  Total supply of the token
      */
     constructor(
         address _molekMarket,
@@ -31,6 +31,11 @@ contract Favor is Ownable, OFTV2 {
         _mint(msg.sender, _totalSupply);
     }
 
+    /**
+     * @param _to           Address to mint to
+     * @param _collections  Collections to mint from
+     * @param _tokenIds     Token IDs to mint
+     */
     function mint(
         address _to,
         address[] calldata _collections,
@@ -53,7 +58,10 @@ contract Favor is Ownable, OFTV2 {
         _mint(_to, _tokenIds.length);
     }
 
-    function burn(uint256 value) external {
-        _burn(msg.sender, value);
+    /**
+     * @param _value Amount to burn
+     */
+    function burn(uint256 _value) external {
+        _burn(msg.sender, _value);
     }
 }
