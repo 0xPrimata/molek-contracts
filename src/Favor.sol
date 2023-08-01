@@ -1,5 +1,37 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity >=0.8.20;
+
+//      Favor                       ╒████▌
+//      by primata                ▄▄▓█████▄▄
+//                              ▄▄▀▀▀█████▀▀▄▄.
+//                           ,,▐▀▀  ]▓▓██▌  ▀▀▌,,
+//                           ██▌    ]▓▓██▌    ▐██
+//                           ██▌    ]▓▓██▌    ▐██
+//                           ██▌    ]▓▓██▌    ▐██
+//                           ██▌    ]▓▓██▌    ▐██
+//                           ██▌  ██████████  ▐██
+//                         ▄▄▀▀▐▄▄▀▀▀████▌▀▀▄▄▌▀▀▄▄φ
+//                        ▐██  ▐██  ]▓▓██▌  ██▌  ██▌
+//                        ▐██  ▐██  ]▓▓██▌  ██▌  ██▌
+//                        ▐██  ▐██  ]▓▓██▌  ██▌  ██▌
+//                        ▐██  ▐██  ]▓▓██▌  ██▌  ██▌
+//                      ██▌    ▐██  ]▓▓██▌  ██▌    ▐██
+//                      ██▌    ▐██  ]▓▓██▌  ██▌    ▐██
+//                      ██▌    ▐██  ]▓▓██▌  ██▌    ▐██
+//                    ▄▄╜╚      ╚╚  ]▓▓██▌  ╙╚      ╚╚▄▄Φ
+//                 ▄▄▄██            ]▓▓██▌            ▀▀▐▄▄
+//               ▄▄▀▀▀▀▀▄▄          ]▓▓██▌            ▄▄▐▀▀▄▄
+//              ▐██     ██▌__     __J▓▓██▌__        __██▌  ██▌__
+//              ▐██       ▐██     ██████████       ▐██       ▐██
+//            ██▌  ██▌       ███▓▓█████  ▐████▌  ██▌       ██▌  ██▌
+//         ▐██       ▐██       ▐████▌       █████       ▐██       ▐██
+//       ██▌            ██▌    j▓▓██▌       ██▌       ██▌            ██▌
+//    ╒██``             ``▐██▄▄▓██``        ``▐██  ╒██``             ``▐██
+//    ▐██                 ]████▌▀▀             ▀▀▄▄▌▀▀                 ▐██
+//     ▀▀▄▄.              ]▓▓██▌                 ██▌                 ▄▄▐▀▀
+//       ▀▀▌,,,,,,,,,,,,,,▐██▀▀▌                 ▀▀▌,,             ,,▀▀▌
+//         ▐██▓▓▓▓▓▓▓▓▓▓▓▓███                      ▐██            ▐██
+//            ████████████▌                           ████████████▌
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -20,15 +52,12 @@ contract Favor is Ownable, OFTV2 {
      * @notice Constructor
      * @param _molekMarket  Address of the MolekMarket contract
      * @param _lzEndpoint   Address of the LayerZero endpoint
-     * @param _totalSupply  Total supply of the token
      */
     constructor(
         address _molekMarket,
-        address _lzEndpoint,
-        uint256 _totalSupply
+        address _lzEndpoint
     ) OFTV2("Favor", "FAVOR", 18, _lzEndpoint) {
         molekMarket = IMolekMarket(_molekMarket);
-        _mint(msg.sender, _totalSupply);
     }
 
     /**
@@ -51,11 +80,11 @@ contract Favor is Ownable, OFTV2 {
 
             collection.safeTransferFrom(
                 msg.sender,
-                address(0xdead),
+                address(0xdEaD),
                 _tokenIds[i]
             );
         }
-        _mint(_to, _tokenIds.length);
+        _mint(_to, _tokenIds.length * 10 ** decimals());
     }
 
     /**

@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity >=0.8.19;
+pragma solidity >=0.8.20;
 
 //     ▒▒                                          ▒▒░░
 //   ░░▒▒                                            ▒▒░░
@@ -26,9 +26,8 @@ pragma solidity >=0.8.19;
 //                     ▓▓▒▒  ▓▓▒▒░░▒▒██
 //                     ▓▓▒▒░░░░▒▒░░▒▒▒▒
 //    Molek Market      ▒▒▒▒██▒▒░░██▒▒
-//      by primata      ▒▒▒▒▒▒▒▒▒▒▒▒
+//      by primata       ▒▒▒▒▒▒▒▒▒▒▒▒
 
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
@@ -39,15 +38,13 @@ import "./interfaces/IERC2981.sol";
 import "./interfaces/IERC20.sol";
 
 contract MolekMarket is IMarketplace, OwnableUpgradeable {
-    using Address for address;
-
     mapping(address => mapping(uint256 => Ask)) public asks;
     mapping(address => mapping(uint256 => Bid)) public bids;
+    mapping(address => bool) public blacklisted;
 
-    bool private paused;
+    bool public paused;
     address public feeCollector;
     IERC20 public wrappedToken;
-    mapping(address => bool) public blacklisted;
 
     modifier onlyBlacklisted(IERC721 _collection) {
         if (!blacklisted[address(_collection)]) revert NotBlacklisted();
@@ -132,8 +129,8 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
     }
 
     /// @notice Seller placed ask, you (buyer) are fine with the terms. You accept
-    /// their ask by sending the required msg.value and indicating the id of the
-    /// token you are purchasing.
+    /// their ask by sending the required msg.value, amount of wrapped token
+    /// and indicating the id of the token you are purchasing.
     /// @param _collection  ERC-721 address.
     /// @param _tokenId     Token Id of the NFTs msg.sender wishes to accept the ask on.
     /// @param _wrapped     Amount of wrapped tokens to send to the seller.
@@ -149,9 +146,9 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
         if (_collection.ownerOf(_tokenId) != ask.creator)
             revert AskCreatorNotOwner();
 
-        uint256 fee = _calculateFee(collectionAddress, _tokenId, ask.price);
-
         delete asks[collectionAddress][_tokenId];
+
+        uint256 fee = _calculateFee(collectionAddress, _tokenId, ask.price);
 
         _chargeAndRefund(ask.price, msg.value, _wrapped);
         _transferFundsAndFees(address(this), ask.creator, ask.price - fee, fee);
@@ -164,38 +161,7 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
         });
     }
 
-    /// @notice Seller placed ask, you (buyer) are fine with the terms. You accept
-    /// their ask by sending the required msg.value and indicating the id of the
-    /// token you are purchasing.
-    /// @param _collection  ERC-721 address.
-    /// @param _tokenId     Token Id of the NFTs msg.sender wishes to accept the ask on.
-    function acceptAskAVAX(
-        IERC721 _collection,
-        uint256 _tokenId
-    ) public payable enabledOnly {
-        address collectionAddress = address(_collection);
-        Ask memory ask = asks[collectionAddress][_tokenId];
-        if (ask.creator == address(0)) revert AskDoesNotExist();
-        if (msg.value < ask.price) revert InsufficientValue();
-        if (_collection.ownerOf(_tokenId) != ask.creator)
-            revert AskCreatorNotOwner();
-
-        uint256 fee = _calculateFee(collectionAddress, _tokenId, ask.price);
-
-        delete asks[collectionAddress][_tokenId];
-
-        _chargeAndRefundAVAX(ask.price, msg.value);
-        _transferFundsAndFees(address(this), ask.creator, ask.price - fee, fee);
-        _collection.safeTransferFrom(ask.creator, msg.sender, _tokenId);
-
-        emit AcceptAsk({
-            collection: collectionAddress,
-            tokenId: _tokenId,
-            price: ask.price
-        });
-    }
-
-    // ============ OWNER ==================================================
+    ////////////////////////////////// OWNER /////////////////////////////////
 
     /// @dev Used to change the address of the trade fee receiver.
     function setFeeCollector(
@@ -219,7 +185,7 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
         emit PauseToggled(paused);
     }
 
-    // ============ PROCESS =============================================
+    //////////////////////////////// INTERNAL /////////////////////////////////
 
     function _transferFundsAndFees(
         address _from,
@@ -254,14 +220,6 @@ contract MolekMarket is IMarketplace, OwnableUpgradeable {
         if (_wrapped > 0) {
             wrappedToken.transferFrom(msg.sender, address(this), _wrapped);
         }
-        if (excess > 0) {
-            wrappedToken.transferFrom(address(this), msg.sender, excess);
-        }
-    }
-
-    function _chargeAndRefundAVAX(uint256 _cost, uint256 _msgValue) internal {
-        uint256 excess = _msgValue - _cost;
-        IWrapper(address(wrappedToken)).deposit{value: msg.value}();
         if (excess > 0) {
             wrappedToken.transferFrom(address(this), msg.sender, excess);
         }
